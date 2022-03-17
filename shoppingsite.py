@@ -15,7 +15,7 @@ import melons
 app = Flask(__name__)
 
 # A secret key is needed to use Flask sessioning features
-app.secret_key = 'a75826867e0a960838e5f08393a3e23f71a7b3c1b094f1d22495be468c13f033'
+app.secret_key = 'a75826867e0a960838e5f08393a3e23f71a7b3c1b094f1d22495be468c13f03'
 
 # Normally, if you refer to an undefined variable in a Jinja template,
 # Jinja silently ignores this. This makes debugging difficult, so we'll
@@ -79,30 +79,35 @@ def show_shopping_cart():
     #
     # Make sure your function can also handle the case wherein no cart has
     # been added to the session
-    cart_melons = []
-    cart = session['cart']
-    for melon in cart:
-        melon_id = melon
-        melon_data = melons.get_by_id(melon_id)
-        melon_count = cart[melon]
-        print(melon_data)
-        melon_name = melon_data.common_name
-        melon_price = melon_data.price
-        melon_total = melon_price * melon_count
-        curr_melon = {}
-        curr_melon['name'] = melon_name
-        curr_melon['quantity'] = melon_count
-        curr_melon['price'] = f"${melon_price}0"
-        curr_melon['total'] = f"${melon_total}0"
-        cart_melons.append(curr_melon)
-    cart_total = 0
-    for melon in cart_melons:
-        total = melon.get('total')
-        total_int = total[1:]
-        cart_total += float(total_int)
-    return render_template("cart.html",
-                           cart_melons=cart_melons,
-                           cart_total=cart_total)
+    if 'cart' in session:
+        cart_melons = []
+        cart = session['cart']
+        for melon in cart:
+            melon_id = melon
+            melon_data = melons.get_by_id(melon_id)
+            melon_count = cart[melon]
+            print(melon_data)
+            melon_name = melon_data.common_name
+            melon_price = melon_data.price
+            melon_total = melon_price * melon_count
+            curr_melon = {}
+            curr_melon['name'] = melon_name
+            curr_melon['quantity'] = melon_count
+            curr_melon['price'] = f"${melon_price}0"
+            curr_melon['total'] = f"${melon_total}0"
+            cart_melons.append(curr_melon)
+        cart_total = 0
+        for melon in cart_melons:
+            total = melon.get('total')
+            total_int = total[1:]
+            cart_total += float(total_int)
+        return render_template("cart.html",
+                            cart_melons=cart_melons,
+                            cart_total=cart_total)
+    else:
+        return render_template("cart.html",
+                               cart_melons=[],
+                               cart_total=0.0)
 
 
 @app.route("/add_to_cart/<melon_id>")
