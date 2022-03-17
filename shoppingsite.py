@@ -6,7 +6,8 @@ put melons in a shopping cart.
 Authors: Joel Burton, Christian Fernandez, Meggie Mahnken, Katie Byers.
 """
 
-from flask import Flask, render_template, redirect, flash
+from itertools import count
+from flask import Flask, render_template, redirect, flash, session, request, url_for
 import jinja2
 
 import melons
@@ -14,7 +15,7 @@ import melons
 app = Flask(__name__)
 
 # A secret key is needed to use Flask sessioning features
-app.secret_key = 'this-should-be-something-unguessable'
+app.secret_key = 'a75826867e0a960838e5f08393a3e23f71a7b3c1b094f1d22495be468c13f033'
 
 # Normally, if you refer to an undefined variable in a Jinja template,
 # Jinja silently ignores this. This makes debugging difficult, so we'll
@@ -30,8 +31,9 @@ app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = True
 @app.route("/")
 def index():
     """Return homepage."""
-
-    return render_template("homepage.html")
+    if 'username' in session:
+        return f'Logged in as {session["username"]}' and render_template("homepage.html")
+    return f"<a href='http://localhost:5000/login'>You are not logged in!</a>"
 
 
 @app.route("/melons")
@@ -77,8 +79,30 @@ def show_shopping_cart():
     #
     # Make sure your function can also handle the case wherein no cart has
     # been added to the session
-
-    return render_template("cart.html")
+    cart_melons = []
+    cart = session['cart']
+    for melon in cart:
+        melon_id = melon
+        melon_data = melons.get_by_id(melon_id)
+        melon_count = cart[melon]
+        print(melon_data)
+        melon_name = melon_data.common_name
+        melon_price = melon_data.price
+        melon_total = melon_price * melon_count
+        curr_melon = {}
+        curr_melon['name'] = melon_name
+        curr_melon['quantity'] = melon_count
+        curr_melon['price'] = f"${melon_price}0"
+        curr_melon['total'] = f"${melon_total}0"
+        cart_melons.append(curr_melon)
+    cart_total = 0
+    for melon in cart_melons:
+        total = melon.get('total')
+        total_int = total[1:]
+        cart_total += float(total_int)
+    return render_template("cart.html",
+                           cart_melons=cart_melons,
+                           cart_total=cart_total)
 
 
 @app.route("/add_to_cart/<melon_id>")
@@ -99,8 +123,20 @@ def add_to_cart(melon_id):
     # - increment the count for that melon id by 1
     # - flash a success message
     # - redirect the user to the cart page
+    if 'cart' not in session:
+        session['cart'] = {}
+    elif 'cart' in session:
+        cart = session['cart']
+        if melon_id not in cart:
+            cart[melon_id] = 1
+            flash('Melon successfully added to cart.')
+            return redirect(url_for('show_shopping_cart'))
+        elif melon_id in cart:
+            cart[melon_id] += 1
+            flash(f'Added another melon to cart.')
+            return redirect(url_for('show_shopping_cart'))
+        
 
-    return "Oops! This needs to be implemented!"
 
 
 @app.route("/login", methods=["GET"])
@@ -131,8 +167,21 @@ def process_login():
     #   message and redirect the user to the "/melons" route
     # - if they don't, flash a failure message and redirect back to "/login"
     # - do the same if a Customer with that email doesn't exist
+    if request.method == "POST":
+        session['username'] = request.form['email']
+        return redirect(url_for('index'))
+    return """
+        <form method="post">
+            <p><input type=text name=username>
+            <p><input type=submit value=Login>
+        </form>
+        """
 
-    return "Oops! This needs to be implemented"
+@app.route('/logout')
+def logout():
+    # remove the username from the session if it's there
+    session.pop('username',None)
+    return redirect(url_for('index'))
 
 
 @app.route("/checkout")
