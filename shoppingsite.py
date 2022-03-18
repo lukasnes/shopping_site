@@ -11,6 +11,7 @@ from flask import Flask, render_template, redirect, flash, session, request, url
 import jinja2
 
 import melons
+import customers
 
 app = Flask(__name__)
 
@@ -173,14 +174,27 @@ def process_login():
     # - if they don't, flash a failure message and redirect back to "/login"
     # - do the same if a Customer with that email doesn't exist
     if request.method == "POST":
-        session['username'] = request.form['email']
-        return redirect(url_for('index'))
-    return """
-        <form method="post">
-            <p><input type=text name=username>
-            <p><input type=submit value=Login>
-        </form>
-        """
+        email = request.form['email']
+        password = request.form['password']
+        if customers.get_by_email(email):
+            customer = customers.get_by_email(email)
+            print(customer)
+            if password == customer.password:
+                session['username'] = email
+                flash("Login successful!")
+                return redirect(url_for('list_melons')) 
+            else: 
+                flash('Invalid password.')
+                return render_template('login.html')
+        else: 
+            flash("Invalid email.")
+            return render_template('login.html')
+    # return """
+    #     <form method="post">
+    #         <p><input type=text name=username>
+    #         <p><input type=submit value=Login>
+    #     </form>
+    #     """
 
 @app.route('/logout')
 def logout():
